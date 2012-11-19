@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	fd_set rfds, wfds, efds;
 	struct timeval tv;
 	int i;
-	int tun_fd = -1, tty_fd = -1, serialPortFd = -1;
+	int tun_fd = -1, serialPortFd = -1;
 	int nread, nwrite, pid, retVal, nfds = 0;
 	int sync_counter = 0;
 	int sync_passed = 0;
@@ -149,17 +149,6 @@ int main(int argc, char* argv[])
 		printf("Interface \'%s\' allocated\n", tun_name);
 	}
 
-	tty_fd = open("/dev/tty", O_RDONLY | O_NOCTTY);
-	if (tty_fd < 0)
-	{
-		perror("open tty");
-		exit(EXIT_FAILURE);
-	}
-	else
-	{
-		printf("/dev/tty opened\n");
-	}
-
 	pid = fork();
 	if (pid == 0) //if child process
 	{
@@ -180,10 +169,8 @@ int main(int argc, char* argv[])
 		FD_ZERO(&efds);
 		FD_SET(serialPortFd, &rfds);
 		FD_SET(tun_fd, &rfds);
-		FD_SET(tty_fd, &rfds);
 		nfds = max(nfds, serialPortFd);
 		nfds = max(nfds, tun_fd);
-		nfds = max(nfds, tty_fd);
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
 		retVal = select(nfds + 1, &rfds, &wfds, &efds, NULL/*&tv*/);
@@ -195,18 +182,6 @@ int main(int argc, char* argv[])
 		{
 			perror("select()");
 			exit(EXIT_FAILURE);
-		}
-		//TTY INTERFACE
-		if (FD_ISSET(tty_fd, &rfds))
-		{
-			nread = read(tty_fd, read_buffer, sizeof(read_buffer));
-			printf("Read %d bytes from device fd=%d\n", nread, tty_fd);
-			for (i = 0; i < nread; i++)
-			{
-				if (read_buffer[i] == 0x1b) /*esc*/
-					exit(EXIT_SUCCESS);
-				putchar(read_buffer[i]);
-			}
 		}
 		//SERIAL PORT
 		if (FD_ISSET(serialPortFd, &rfds))
